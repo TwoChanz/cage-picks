@@ -57,9 +57,9 @@ RootLayout (ClerkProvider → SafeAreaProvider → Stack)
 
 Requires a `.env` file (see `.env.example`):
 ```
-EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY   # Clerk dashboard → API Keys
-EXPO_PUBLIC_SUPABASE_URL            # Supabase project → Settings → API
-EXPO_PUBLIC_SUPABASE_ANON_KEY       # Supabase anon key (public, RLS-protected)
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY      # Clerk dashboard → API Keys
+EXPO_PUBLIC_SUPABASE_URL               # Supabase project → Connect
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY   # Supabase publishable key (public, RLS-protected)
 ```
 
 All client-side vars must use the `EXPO_PUBLIC_` prefix to be bundled by Expo.
