@@ -33,8 +33,15 @@ import {
   getUserPredictionsForEvent,
   savePrediction,
 } from "@/lib/predictions"
+import {
+  getNudgesForEvent,
+  respondToNudge,
+  type NudgeWithResponses,
+} from "@/lib/meetups"
+import { getGroupsByUser } from "@/lib/groups"
 import { EventCard } from "@/components/events/event-card"
-import type { Prediction } from "@/types/database"
+import { NudgeCard } from "@/components/events/nudge-card"
+import type { Prediction, MeetupResponseType } from "@/types/database"
 
 /** Mock profile ID for development when Clerk auth isn't available */
 const MOCK_PROFILE_ID = "mock-user-001"
@@ -47,6 +54,8 @@ export default function EventDetailScreen() {
   const [predictions, setPredictions] = useState<Map<string, Prediction>>(
     new Map()
   )
+  const [nudges, setNudges] = useState<NudgeWithResponses[]>([])
+  const [groupNames, setGroupNames] = useState<Map<string, string>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
 
   const profileId = user?.id ?? MOCK_PROFILE_ID
@@ -61,11 +70,17 @@ export default function EventDetailScreen() {
 
         if (eventData) {
           const fightIds = eventData.fights.map((f) => f.id)
-          const userPredictions = await getUserPredictionsForEvent(
-            profileId,
-            fightIds
-          )
+          const [userPredictions, eventNudges, userGroups] =
+            await Promise.all([
+              getUserPredictionsForEvent(profileId, fightIds),
+              getNudgesForEvent(eventData.id, profileId),
+              getGroupsByUser(profileId),
+            ])
           setPredictions(userPredictions)
+          setNudges(eventNudges)
+          setGroupNames(
+            new Map(userGroups.map((g) => [g.id, g.name]))
+          )
         }
       } catch (err) {
         console.error("Failed to load event:", err)
@@ -113,6 +128,23 @@ export default function EventDetailScreen() {
       }
     },
     [profileId]
+  )
+
+  /**
+   * Handle meetup nudge response (In / Out / Maybe).
+   */
+  const handleNudgeRespond = useCallback(
+    async (nudgeId: string, response: MeetupResponseType) => {
+      const result = await respondToNudge(nudgeId, profileId, response)
+      if (result) {
+        // Refresh nudges to show updated responses
+        if (event) {
+          const updatedNudges = await getNudgesForEvent(event.id, profileId)
+          setNudges(updatedNudges)
+        }
+      }
+    },
+    [profileId, event]
   )
 
   // Count picks for the progress indicator
@@ -195,6 +227,22 @@ export default function EventDetailScreen() {
           predictions={predictions}
           onPickFighter={handlePickFighter}
         />
+
+        {/* Meetup nudges — "Who's watching?" */}
+        {nudges.length > 0 && (
+          <View style={styles.nudgeSection}>
+            <Text style={styles.nudgeSectionTitle}>Watch Party</Text>
+            {nudges.map((nudge) => (
+              <NudgeCard
+                key={nudge.id}
+                nudge={nudge}
+                groupName={groupNames.get(nudge.group_id) ?? "Group"}
+                currentProfileId={profileId}
+                onRespond={handleNudgeRespond}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </>
   )
@@ -267,5 +315,16 @@ const styles = StyleSheet.create({
     color: Colors.foregroundMuted,
     fontSize: FontSize.sm,
     fontWeight: "600",
+  },
+
+  // Nudge section
+  nudgeSection: {
+    marginTop: Spacing.xl,
+    gap: Spacing.md,
+  },
+  nudgeSectionTitle: {
+    color: Colors.foreground,
+    fontSize: FontSize.lg,
+    fontWeight: "700",
   },
 })

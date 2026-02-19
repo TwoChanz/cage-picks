@@ -96,10 +96,10 @@ export default function TabLayout() {
 
       {/* ── Groups Tab ── */}
       <Tabs.Screen
-        name="groups/index"
+        name="groups"
         options={{
           title: "Groups",
-          headerTitle: "Groups",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="people" color={color} size={size} />
           ),
