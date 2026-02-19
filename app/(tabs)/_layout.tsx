@@ -17,7 +17,10 @@
  */
 import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { Colors } from "@/constants/theme"
+
+const ACTIVE_COLOR = "#EF4444"
+const INACTIVE_COLOR = "#6B7280"
+const TAB_BAR_BG = "#0F0F1A"
 
 /**
  * Helper to render tab bar icons.
@@ -40,11 +43,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         // ── Tab Bar Styling ──
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.foregroundMuted,
+        tabBarActiveTintColor: ACTIVE_COLOR,
+        tabBarInactiveTintColor: INACTIVE_COLOR,
         tabBarStyle: {
-          backgroundColor: Colors.background,
-          borderTopColor: Colors.border,
+          backgroundColor: TAB_BAR_BG,
+          borderTopColor: "#1a1a2e",
           borderTopWidth: 1,
           height: 85,
           paddingBottom: 25,  // Extra padding for home indicator on newer iPhones
@@ -57,9 +60,9 @@ export default function TabLayout() {
 
         // ── Header Styling ──
         headerStyle: {
-          backgroundColor: Colors.background,
+          backgroundColor: TAB_BAR_BG,
         },
-        headerTintColor: Colors.foreground,
+        headerTintColor: "#f0f0f5",
         headerTitleStyle: {
           fontWeight: "700",
           fontSize: 18,
@@ -74,7 +77,7 @@ export default function TabLayout() {
           title: "Events",
           headerTitle: "Upcoming Events",
           tabBarIcon: ({ color, size }) => (
-            <TabIcon name="calendar-outline" color={color} size={size} />
+            <TabIcon name="calendar" color={color} size={size} />
           ),
         }}
       />
@@ -84,8 +87,9 @@ export default function TabLayout() {
         name="fighters"
         options={{
           title: "Fighters",
+          headerTitle: "Fighters",
           tabBarIcon: ({ color, size }) => (
-            <TabIcon name="people-outline" color={color} size={size} />
+            <TabIcon name="fitness" color={color} size={size} />
           ),
         }}
       />
@@ -95,8 +99,9 @@ export default function TabLayout() {
         name="groups"
         options={{
           title: "Groups",
+          headerTitle: "Groups",
           tabBarIcon: ({ color, size }) => (
-            <TabIcon name="people-circle-outline" color={color} size={size} />
+            <TabIcon name="people" color={color} size={size} />
           ),
         }}
       />
@@ -105,10 +110,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: "Board",
+          title: "Leaderboard",
           headerTitle: "Leaderboard",
           tabBarIcon: ({ color, size }) => (
-            <TabIcon name="trophy-outline" color={color} size={size} />
+            <TabIcon name="trophy" color={color} size={size} />
           ),
         }}
       />
@@ -118,8 +123,9 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          headerTitle: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <TabIcon name="person-outline" color={color} size={size} />
+            <TabIcon name="person" color={color} size={size} />
           ),
         }}
       />

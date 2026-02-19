@@ -61,6 +61,9 @@ export default function RootLayout() {
               animation: "slide_from_right",
             }}
           >
+            {/* Root index — redirects based on auth state */}
+            <Stack.Screen name="index" />
+
             {/* Tab navigator — the main app */}
             <Stack.Screen name="(tabs)" />
 
