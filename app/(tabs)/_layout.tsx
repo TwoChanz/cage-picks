@@ -96,7 +96,7 @@ export default function TabLayout() {
 
       {/* ── Groups Tab ── */}
       <Tabs.Screen
-        name="groups"
+        name="groups/index"
         options={{
           title: "Groups",
           headerTitle: "Groups",
@@ -108,7 +108,7 @@ export default function TabLayout() {
 
       {/* ── Leaderboard Tab ── */}
       <Tabs.Screen
-        name="leaderboard"
+        name="leaderboard/index"
         options={{
           title: "Leaderboard",
           headerTitle: "Leaderboard",
@@ -120,7 +120,7 @@ export default function TabLayout() {
 
       {/* ── Profile Tab ── */}
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
           title: "Profile",
           headerTitle: "Profile",
