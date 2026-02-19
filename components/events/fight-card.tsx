@@ -8,16 +8,24 @@
  *
  * Each section has a header and renders FightRow for each fight.
  * Empty sections are hidden.
+ *
+ * When prediction props are provided, each FightRow becomes interactive —
+ * users can tap a fighter side to pick their winner.
  */
 import { View, Text, StyleSheet } from "react-native"
 import { Colors, FontSize, Spacing } from "@/constants/theme"
 import { FightRow } from "./fight-row"
-import type { FightWithFighters, CardPosition } from "@/types/database"
+import { isFightLocked } from "@/lib/predictions"
+import type { FightWithFighters, CardPosition, Prediction } from "@/types/database"
 
 interface FightCardProps {
   fights: FightWithFighters[]
   /** If true, show all fights. If false, show only main card fights. */
   showFull?: boolean
+  /** Map of fight_id → Prediction for the current user */
+  predictions?: Map<string, Prediction>
+  /** Called when user picks a fighter for a fight */
+  onPickFighter?: (fightId: string, fighterId: string) => void
 }
 
 /** Display labels for each card position */
@@ -30,7 +38,12 @@ const SECTION_LABELS: Record<CardPosition, string> = {
 /** The order sections should appear in */
 const SECTION_ORDER: CardPosition[] = ["main", "prelim", "early-prelim"]
 
-export function FightCard({ fights, showFull = false }: FightCardProps) {
+export function FightCard({
+  fights,
+  showFull = false,
+  predictions,
+  onPickFighter,
+}: FightCardProps) {
   // Group fights by their card position
   const grouped = new Map<CardPosition, FightWithFighters[]>()
   for (const fight of fights) {
@@ -64,9 +77,25 @@ export function FightCard({ fights, showFull = false }: FightCardProps) {
 
             {/* Fights in this section */}
             <View style={styles.fightsList}>
-              {sectionFights.map((fight) => (
-                <FightRow key={fight.id} fight={fight} />
-              ))}
+              {sectionFights.map((fight) => {
+                const prediction = predictions?.get(fight.id)
+                const locked = isFightLocked(fight.status)
+
+                return (
+                  <FightRow
+                    key={fight.id}
+                    fight={fight}
+                    pickedFighterId={prediction?.picked_fighter_id ?? null}
+                    onPickFighter={
+                      onPickFighter
+                        ? (fighterId) => onPickFighter(fight.id, fighterId)
+                        : undefined
+                    }
+                    isLocked={locked}
+                    isCorrect={prediction?.is_correct}
+                  />
+                )
+              })}
             </View>
           </View>
         )
