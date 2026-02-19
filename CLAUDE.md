@@ -20,7 +20,7 @@ Linting (`eslint .`) and testing (`jest`) are declared in package.json but not y
 
 ## Architecture
 
-**Framework:** Expo SDK 52, React Native 0.76, Expo Router 4 (file-based routing), TypeScript strict mode.
+**Framework:** Expo SDK 54, React Native 0.81, Expo Router 6 (file-based routing), TypeScript strict mode.
 
 **Navigation tree:**
 ```
@@ -70,6 +70,6 @@ All client-side vars must use the `EXPO_PUBLIC_` prefix to be bundled by Expo.
 - **Database types:** Add new table interfaces to `types/database.ts`. Keep them in sync with Supabase migrations.
 - **Data access:** Keep Supabase queries in `lib/` files, not in components or screens.
 - **New screens:** Add as files under `app/` following Expo Router file-based routing conventions.
-- **New Arch enabled:** `app.json` has `"newArchEnabled": true` — React Native New Architecture (Fabric/TurboModules) is active.
+- **New Arch default:** React Native New Architecture (Fabric/TurboModules) is the default in SDK 54+ — no `newArchEnabled` flag needed.
 - **Dark-only theme:** `userInterfaceStyle` is set to `"dark"`. The app does not support light mode.
 - **Portrait-locked:** Orientation is fixed to portrait.
