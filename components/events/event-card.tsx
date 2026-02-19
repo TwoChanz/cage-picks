@@ -36,14 +36,24 @@ import { FightCard } from "./fight-card"
 import { RemindMeToggle } from "./remind-me-toggle"
 import { AddToCalendarButton } from "./add-to-calendar-button"
 import type { EventWithFights } from "@/lib/events"
+import type { Prediction } from "@/types/database"
 
 interface EventCardProps {
   event: EventWithFights
   /** Show full fight card (all sections) or just main card preview */
   showFullCard?: boolean
+  /** Map of fight_id → Prediction for the current user */
+  predictions?: Map<string, Prediction>
+  /** Called when user picks a fighter for a fight */
+  onPickFighter?: (fightId: string, fighterId: string) => void
 }
 
-export function EventCard({ event, showFullCard = false }: EventCardProps) {
+export function EventCard({
+  event,
+  showFullCard = false,
+  predictions,
+  onPickFighter,
+}: EventCardProps) {
   const router = useRouter()
 
   return (
@@ -98,7 +108,12 @@ export function EventCard({ event, showFullCard = false }: EventCardProps) {
       {/* ── Fight Card ── */}
       {event.fights.length > 0 && (
         <View style={styles.fightCardWrapper}>
-          <FightCard fights={event.fights} showFull={showFullCard} />
+          <FightCard
+            fights={event.fights}
+            showFull={showFullCard}
+            predictions={predictions}
+            onPickFighter={onPickFighter}
+          />
         </View>
       )}
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FightNight OS — a UFC/MMA prediction app built with React Native (Expo). Users authenticate, browse upcoming fight cards, make predictions, join groups, and compete on leaderboards. Currently at Phase 0+1 (auth, events, fight cards implemented; predictions, groups, leaderboard are placeholders).
+FightNight OS — a UFC/MMA prediction app built with React Native (Expo). Users authenticate, browse upcoming fight cards, make predictions, join groups, and compete on leaderboards. Currently at Phase 0+1 (auth, events, fighters implemented; predictions, groups, leaderboard are placeholders).
 
 ## Development Commands
 
@@ -27,7 +27,7 @@ Linting (`eslint .`) and testing (`jest`) are declared in package.json but not y
 RootLayout (ClerkProvider → SafeAreaProvider → Stack)
 ├── (tabs)/             # Bottom tab navigator, 5 tabs
 │   ├── events/         # Event list + [slug] detail screen
-│   ├── fighters/       # Placeholder
+│   ├── fighters/       # Fighter list + [slug] detail, search & weight class filter
 │   ├── groups/         # Placeholder
 │   ├── leaderboard/    # Placeholder
 │   └── profile/        # Sign-out, user info
@@ -37,6 +37,8 @@ RootLayout (ClerkProvider → SafeAreaProvider → Stack)
 **Data flow:** Clerk handles auth (sessions stored via `expo-secure-store`). Supabase is the database (PostgreSQL + RLS). No global state management — screens use local `useState` and call functions from `lib/`.
 
 **Key data pattern — N+1 prevention in `lib/events.ts`:** Events and fights are fetched in exactly 2 queries (one for events, one for all related fights with fighter joins), then stitched together in JS. Follow this pattern for any new data access involving parent-child relationships.
+
+**Mock data:** `lib/fighters.ts` has a `USE_MOCK` flag (currently `true`) with hardcoded fighter data for development when Supabase is paused. Set to `false` to use real database queries.
 
 ## Path Alias
 
@@ -48,9 +50,13 @@ RootLayout (ClerkProvider → SafeAreaProvider → Stack)
 |------|---------|
 | `constants/theme.ts` | Design system: all colors, spacing, font sizes, border radii. Dark theme with red/orange accent palette. |
 | `types/database.ts` | TypeScript interfaces matching every Supabase table. Must stay in sync with DB schema. |
-| `lib/events.ts` | Data access layer for events/fights. All Supabase queries live in `lib/`. |
+| `lib/events.ts` | Data access for events/fights (N+1 prevention pattern). |
+| `lib/fighters.ts` | Data access for fighters with search/filter; includes mock data toggle. |
 | `lib/auth.ts` | Clerk token cache using expo-secure-store. |
 | `lib/supabase.ts` | Supabase client initialization. |
+| `lib/notifications.ts` | Expo push notification helpers (register, schedule, cancel). |
+| `lib/utils.ts` | Formatting utilities: records, height conversion, slugify, dates. |
+| `supabase/migrations/` | Database schema (`001_initial_schema.sql`) and seed data (`002_seed_events.sql`). Source of truth for table structure and RLS policies. |
 | `app.json` | Expo config: plugins, permissions, bundle IDs (`com.six1fivedevs.fightnightos`). |
 
 ## Environment Variables
@@ -70,6 +76,7 @@ All client-side vars must use the `EXPO_PUBLIC_` prefix to be bundled by Expo.
 - **Database types:** Add new table interfaces to `types/database.ts`. Keep them in sync with Supabase migrations.
 - **Data access:** Keep Supabase queries in `lib/` files, not in components or screens.
 - **New screens:** Add as files under `app/` following Expo Router file-based routing conventions.
+- **Components:** Organized by domain under `components/` (e.g., `components/events/`, `components/fighters/`). New component groups should follow the same pattern.
 - **New Arch default:** React Native New Architecture (Fabric/TurboModules) is the default in SDK 54+ — no `newArchEnabled` flag needed.
 - **Dark-only theme:** `userInterfaceStyle` is set to `"dark"`. The app does not support light mode.
 - **Portrait-locked:** Orientation is fixed to portrait.

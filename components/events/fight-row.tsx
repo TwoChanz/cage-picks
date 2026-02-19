@@ -1,7 +1,7 @@
 /**
  * FightRow — A single fight matchup between two fighters
  *
- * LAYOUT:
+ * LAYOUT (without predictions):
  * ┌──────────────────────────────────────────────┐
  * │  [MAIN EVENT badge if applicable]            │
  * │  Fighter A Name        vs    Fighter B Name  │
@@ -9,20 +9,63 @@
  * │         Lightweight · 5 Rounds               │
  * └──────────────────────────────────────────────┘
  *
- * The fighter names are left-aligned and right-aligned with "vs" centered.
- * Main events get a highlighted badge and subtle glow.
+ * LAYOUT (with predictions enabled):
+ * ┌──────────────────────────────────────────────┐
+ * │  [MAIN EVENT]                                │
+ * │  ┌─PickA─────┐   vs   ┌─PickB─────┐        │
+ * │  │ Fighter A  │        │ Fighter B  │        │
+ * │  │ 27-1-0     │        │   22-3-0   │        │
+ * │  │ YOUR PICK ✓│        │            │        │
+ * │  └────────────┘        └────────────┘        │
+ * │         Lightweight · 5 Rounds               │
+ * └──────────────────────────────────────────────┘
  */
-import { View, Text, StyleSheet } from "react-native"
+import { View, Text, StyleSheet, Pressable } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { Colors, FontSize, Spacing, BorderRadius } from "@/constants/theme"
 import { formatRecord } from "@/lib/utils"
 import type { FightWithFighters } from "@/types/database"
 
 interface FightRowProps {
   fight: FightWithFighters
+  /** Which fighter the user picked (null = no pick yet) */
+  pickedFighterId?: string | null
+  /** Called when user taps a fighter to pick them */
+  onPickFighter?: (fighterId: string) => void
+  /** Whether this fight is locked (started/completed — no more picks) */
+  isLocked?: boolean
+  /** Whether the user's prediction was correct (null = not yet scored) */
+  isCorrect?: boolean | null
 }
 
-export function FightRow({ fight }: FightRowProps) {
+export function FightRow({
+  fight,
+  pickedFighterId,
+  onPickFighter,
+  isLocked = false,
+  isCorrect,
+}: FightRowProps) {
   const { fighter_a, fighter_b } = fight
+  const hasPredictions = onPickFighter !== undefined
+  const pickedA = pickedFighterId === fighter_a.id
+  const pickedB = pickedFighterId === fighter_b.id
+  const hasPick = pickedA || pickedB
+
+  // Determine result styling for completed fights
+  const showResult = isLocked && hasPick && isCorrect !== undefined && isCorrect !== null
+  const resultColor = isCorrect ? Colors.success : Colors.primary
+
+  const handlePickA = () => {
+    if (!isLocked && onPickFighter) {
+      onPickFighter(fighter_a.id)
+    }
+  }
+
+  const handlePickB = () => {
+    if (!isLocked && onPickFighter) {
+      onPickFighter(fighter_b.id)
+    }
+  }
 
   return (
     <View style={[styles.container, fight.is_main_event && styles.mainEvent]}>
@@ -41,24 +84,76 @@ export function FightRow({ fight }: FightRowProps) {
       {/* Fighter matchup */}
       <View style={styles.matchup}>
         {/* Fighter A (left side) */}
-        <View style={styles.fighterSide}>
-          <Text style={styles.fighterName} numberOfLines={1}>
-            {fighter_a.name}
-          </Text>
-          <Text style={styles.record}>
-            {formatRecord(
-              fighter_a.record_wins,
-              fighter_a.record_losses,
-              fighter_a.record_draws,
-              fighter_a.record_nc
-            )}
-          </Text>
-          {fighter_a.nickname && (
-            <Text style={styles.nickname} numberOfLines={1}>
-              &quot;{fighter_a.nickname}&quot;
+        {hasPredictions ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.fighterSide,
+              styles.pickable,
+              pickedA && styles.pickedSide,
+              pickedA && { borderColor: Colors.fighterA + "80" },
+              showResult && pickedA && { borderColor: resultColor + "80" },
+              isLocked && !pickedA && styles.lockedUnpicked,
+              pressed && !isLocked && styles.pickablePressed,
+            ]}
+            onPress={handlePickA}
+            disabled={isLocked}
+          >
+            <Text style={[styles.fighterName, pickedA && styles.pickedName]} numberOfLines={1}>
+              {fighter_a.name}
             </Text>
-          )}
-        </View>
+            <Text style={styles.record}>
+              {formatRecord(
+                fighter_a.record_wins,
+                fighter_a.record_losses,
+                fighter_a.record_draws,
+                fighter_a.record_nc
+              )}
+            </Text>
+            {fighter_a.nickname && (
+              <Text style={styles.nickname} numberOfLines={1}>
+                &quot;{fighter_a.nickname}&quot;
+              </Text>
+            )}
+            {pickedA && (
+              <View style={styles.pickIndicator}>
+                {showResult ? (
+                  <Ionicons
+                    name={isCorrect ? "checkmark-circle" : "close-circle"}
+                    size={12}
+                    color={resultColor}
+                  />
+                ) : isLocked ? (
+                  <Ionicons name="lock-closed" size={10} color={Colors.foregroundMuted} />
+                ) : null}
+                <Text style={[
+                  styles.pickLabel,
+                  showResult && { color: resultColor },
+                ]}>
+                  YOUR PICK
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <View style={styles.fighterSide}>
+            <Text style={styles.fighterName} numberOfLines={1}>
+              {fighter_a.name}
+            </Text>
+            <Text style={styles.record}>
+              {formatRecord(
+                fighter_a.record_wins,
+                fighter_a.record_losses,
+                fighter_a.record_draws,
+                fighter_a.record_nc
+              )}
+            </Text>
+            {fighter_a.nickname && (
+              <Text style={styles.nickname} numberOfLines={1}>
+                &quot;{fighter_a.nickname}&quot;
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* VS divider */}
         <View style={styles.vsContainer}>
@@ -66,27 +161,80 @@ export function FightRow({ fight }: FightRowProps) {
         </View>
 
         {/* Fighter B (right side) */}
-        <View style={[styles.fighterSide, styles.fighterRight]}>
-          <Text style={[styles.fighterName, styles.textRight]} numberOfLines={1}>
-            {fighter_b.name}
-          </Text>
-          <Text style={[styles.record, styles.textRight]}>
-            {formatRecord(
-              fighter_b.record_wins,
-              fighter_b.record_losses,
-              fighter_b.record_draws,
-              fighter_b.record_nc
-            )}
-          </Text>
-          {fighter_b.nickname && (
-            <Text style={[styles.nickname, styles.textRight]} numberOfLines={1}>
-              &quot;{fighter_b.nickname}&quot;
+        {hasPredictions ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.fighterSide,
+              styles.fighterRight,
+              styles.pickable,
+              pickedB && styles.pickedSide,
+              pickedB && { borderColor: Colors.fighterB + "80" },
+              showResult && pickedB && { borderColor: resultColor + "80" },
+              isLocked && !pickedB && styles.lockedUnpicked,
+              pressed && !isLocked && styles.pickablePressed,
+            ]}
+            onPress={handlePickB}
+            disabled={isLocked}
+          >
+            <Text style={[styles.fighterName, styles.textRight, pickedB && styles.pickedName]} numberOfLines={1}>
+              {fighter_b.name}
             </Text>
-          )}
-        </View>
+            <Text style={[styles.record, styles.textRight]}>
+              {formatRecord(
+                fighter_b.record_wins,
+                fighter_b.record_losses,
+                fighter_b.record_draws,
+                fighter_b.record_nc
+              )}
+            </Text>
+            {fighter_b.nickname && (
+              <Text style={[styles.nickname, styles.textRight]} numberOfLines={1}>
+                &quot;{fighter_b.nickname}&quot;
+              </Text>
+            )}
+            {pickedB && (
+              <View style={[styles.pickIndicator, styles.pickIndicatorRight]}>
+                {showResult ? (
+                  <Ionicons
+                    name={isCorrect ? "checkmark-circle" : "close-circle"}
+                    size={12}
+                    color={resultColor}
+                  />
+                ) : isLocked ? (
+                  <Ionicons name="lock-closed" size={10} color={Colors.foregroundMuted} />
+                ) : null}
+                <Text style={[
+                  styles.pickLabel,
+                  showResult && { color: resultColor },
+                ]}>
+                  YOUR PICK
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <View style={[styles.fighterSide, styles.fighterRight]}>
+            <Text style={[styles.fighterName, styles.textRight]} numberOfLines={1}>
+              {fighter_b.name}
+            </Text>
+            <Text style={[styles.record, styles.textRight]}>
+              {formatRecord(
+                fighter_b.record_wins,
+                fighter_b.record_losses,
+                fighter_b.record_draws,
+                fighter_b.record_nc
+              )}
+            </Text>
+            {fighter_b.nickname && (
+              <Text style={[styles.nickname, styles.textRight]} numberOfLines={1}>
+                &quot;{fighter_b.nickname}&quot;
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
-      {/* Weight class and round info (below the matchup) */}
+      {/* Weight class and round info */}
       <View style={styles.infoRow}>
         {fight.weight_class && (
           <Text style={styles.infoText}>{fight.weight_class}</Text>
@@ -111,7 +259,6 @@ const styles = StyleSheet.create({
   },
   mainEvent: {
     borderColor: Colors.primary + "40",
-    // Subtle red glow for main events (shadow works on iOS, elevation on Android)
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
@@ -174,6 +321,45 @@ const styles = StyleSheet.create({
   },
   textRight: {
     textAlign: "right",
+  },
+
+  // Prediction interaction styles
+  pickable: {
+    borderWidth: 1,
+    borderColor: Colors.transparent,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginHorizontal: -Spacing.xs,
+  },
+  pickablePressed: {
+    backgroundColor: Colors.surfaceLight,
+  },
+  pickedSide: {
+    backgroundColor: Colors.surfaceLight,
+  },
+  pickedName: {
+    color: Colors.foreground,
+  },
+  lockedUnpicked: {
+    opacity: 0.5,
+  },
+
+  // Pick indicator
+  pickIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: Spacing.xs,
+  },
+  pickIndicatorRight: {
+    justifyContent: "flex-end",
+  },
+  pickLabel: {
+    color: Colors.foregroundMuted,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
 
   // VS divider
