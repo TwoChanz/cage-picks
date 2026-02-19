@@ -54,8 +54,7 @@
           "calendarPermission": "FightNight OS needs access to add fight events to your calendar."
         }
       ],
-      "expo-web-browser",
-      "expo-sqlite"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

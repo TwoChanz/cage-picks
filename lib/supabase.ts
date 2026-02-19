@@ -15,10 +15,22 @@
  * (they're safe to expose — the publishable key is public by design,
  * and RLS policies protect the data).
  */
-import "react-native-url-polyfill/auto"
-import { createClient } from "@supabase/supabase-js"
+import { createClient, SupabaseClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ""
-const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? ""
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
+const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabasePublishableKey)
+function initSupabase(): SupabaseClient {
+  if (!supabaseUrl || !supabasePublishableKey) {
+    console.error(
+      "Missing Supabase env vars:",
+      !supabaseUrl ? "EXPO_PUBLIC_SUPABASE_URL" : "",
+      !supabasePublishableKey ? "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" : ""
+    )
+    // Return a client with placeholder values to avoid crash — queries will fail gracefully
+    return createClient("https://placeholder.supabase.co", "placeholder")
+  }
+  return createClient(supabaseUrl, supabasePublishableKey)
+}
+
+export const supabase = initSupabase()

@@ -18,6 +18,7 @@
  *   └── event detail, etc. → Modal/pushed screens
  */
 import { useEffect } from "react"
+import { Text, View } from "react-native"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo"
@@ -30,9 +31,19 @@ import { Colors } from "@/constants/theme"
  * This comes from your .env file (EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY).
  * Get it from: https://dashboard.clerk.com → Your app → API Keys
  */
-const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? ""
+const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
 
 export default function RootLayout() {
+  if (!clerkPublishableKey) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background }}>
+        <Text style={{ color: Colors.foreground, fontSize: 16 }}>
+          Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
+        </Text>
+      </View>
+    )
+  }
+
   return (
     <ClerkProvider
       publishableKey={clerkPublishableKey}
