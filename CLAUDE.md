@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FightNight OS — a UFC/MMA prediction app built with React Native (Expo). Users authenticate, browse upcoming fight cards, make predictions, join groups, and compete on leaderboards. Currently at Phase 0+1 (auth, events, fighters implemented; predictions, groups, leaderboard are placeholders).
+FightNight OS — a UFC/MMA prediction app built with React Native (Expo). Users authenticate, browse upcoming fight cards, make predictions, join groups, and compete on leaderboards.
+
+**Current status:** Auth, events list, event detail (fight cards), and fighters list/detail are functional. Predictions, groups, and leaderboard are placeholders. Clerk-to-Supabase profile sync is not yet implemented.
 
 ## Development Commands
 
@@ -12,11 +14,14 @@ FightNight OS — a UFC/MMA prediction app built with React Native (Expo). Users
 npx expo start              # Start Expo dev server (press i for iOS, a for Android)
 npx expo start --ios        # Start and open iOS simulator
 npx expo start --android    # Start and open Android emulator
-npx expo start --web        # Start web version
 npx expo install --fix      # Fix dependency version mismatches
 ```
 
-Linting (`eslint .`) and testing (`jest`) are declared in package.json but not yet configured — no `.eslintrc` or `jest.config.js` exist.
+Linting (`eslint .`) and testing (`jest`) are declared in package.json but **not configured** — no `.eslintrc` or `jest.config.js` exist.
+
+**Supabase migrations** are in `supabase/migrations/` and numbered sequentially (`001_`, `002_`, etc.). Apply via the Supabase CLI or dashboard. No Edge Functions exist yet.
+
+**EAS Build** is configured with three profiles in `eas.json`: `development` (dev client, internal), `preview` (internal), `production` (auto-increment).
 
 ## Architecture
 
@@ -25,20 +30,21 @@ Linting (`eslint .`) and testing (`jest`) are declared in package.json but not y
 **Navigation tree:**
 ```
 RootLayout (ClerkProvider → SafeAreaProvider → Stack)
-├── (tabs)/             # Bottom tab navigator, 5 tabs
-│   ├── events/         # Event list + [slug] detail screen
-│   ├── fighters/       # Fighter list + [slug] detail, search & weight class filter
-│   ├── groups/         # Placeholder
-│   ├── leaderboard/    # Placeholder
-│   └── profile/        # Sign-out, user info
-└── auth                # Clerk OAuth (Google, Apple)
+├── index.tsx               # Auth redirect guard → /auth or /(tabs)/events
+├── auth.tsx                # Clerk OAuth (Google + Apple via useSSO)
+└── (tabs)/                 # Bottom tab navigator, 5 tabs
+    ├── events/             # Nested Stack: list → [slug] detail
+    ├── fighters/           # Nested Stack: list → [slug] detail
+    ├── groups/             # Placeholder (Phase 3)
+    ├── leaderboard/        # Placeholder (Phase 4)
+    └── profile/            # Clerk user info, sign-out
 ```
 
 **Data flow:** Clerk handles auth (sessions stored via `expo-secure-store`). Supabase is the database (PostgreSQL + RLS). No global state management — screens use local `useState` and call functions from `lib/`.
 
-**Key data pattern — N+1 prevention in `lib/events.ts`:** Events and fights are fetched in exactly 2 queries (one for events, one for all related fights with fighter joins), then stitched together in JS. Follow this pattern for any new data access involving parent-child relationships.
+**Key data pattern — N+1 prevention in `lib/events.ts`:** Events and fights are fetched in exactly 2 queries (one for events, one for all related fights with fighter joins), then stitched together in JS via a `Map`. Follow this pattern for any new data access involving parent-child relationships.
 
-**Mock data:** `lib/fighters.ts` has a `USE_MOCK` flag (currently `true`) with hardcoded fighter data for development when Supabase is paused. Set to `false` to use real database queries.
+**Auth pattern:** Clerk's `useSSO()` hook with `startSSOFlow({ strategy: "oauth_google" | "oauth_apple" })`. On success, `setActive({ session: createdSessionId })` then navigate. Supabase RLS policies use `auth.jwt() ->> 'sub'` to match Clerk user IDs — but no Clerk→Supabase `profiles` table sync exists yet.
 
 ## Path Alias
 
@@ -48,16 +54,24 @@ RootLayout (ClerkProvider → SafeAreaProvider → Stack)
 
 | Path | Purpose |
 |------|---------|
-| `constants/theme.ts` | Design system: all colors, spacing, font sizes, border radii. Dark theme with red/orange accent palette. |
-| `types/database.ts` | TypeScript interfaces matching every Supabase table. Must stay in sync with DB schema. |
-| `lib/events.ts` | Data access for events/fights (N+1 prevention pattern). |
-| `lib/fighters.ts` | Data access for fighters with search/filter; includes mock data toggle. |
-| `lib/auth.ts` | Clerk token cache using expo-secure-store. |
-| `lib/supabase.ts` | Supabase client initialization. |
-| `lib/notifications.ts` | Expo push notification helpers (register, schedule, cancel). |
-| `lib/utils.ts` | Formatting utilities: records, height conversion, slugify, dates. |
-| `supabase/migrations/` | Database schema (`001_initial_schema.sql`) and seed data (`002_seed_events.sql`). Source of truth for table structure and RLS policies. |
-| `app.json` | Expo config: plugins, permissions, bundle IDs (`com.six1fivedevs.fightnightos`). |
+| `constants/theme.ts` | Design system: Colors, Spacing, FontSize, BorderRadius. Dark theme with red/orange accent palette. All `as const` objects. |
+| `types/database.ts` | TypeScript interfaces matching every Supabase table. Must stay in sync with DB schema and migrations. |
+| `lib/events.ts` | Data access for events/fights. Exports `getUpcomingEvents(count)`, `getEventBySlug(slug)`. |
+| `lib/fighters.ts` | Data access for fighters. Exports `getFighters(weightClass?, search?)`, `getFighterBySlug(slug)`, `WEIGHT_CLASSES`, `WeightClass`. Has a `USE_MOCK` toggle for offline dev. |
+| `lib/fighter-images.ts` | Maps fighter slugs to local `require()` images. Exports `getFighterImage(slug)`. Add new entries here when bundling fighter images locally. |
+| `lib/notifications.ts` | Push notification registration, local scheduling for event reminders. Uses `expo-notifications`. |
+| `lib/utils.ts` | Pure utilities: `formatRecord`, `cmToFeetInches`, `cmToInches`, `slugify`, `formatEventDate`. |
+| `lib/auth.ts` | Clerk token cache using `expo-secure-store`. |
+| `lib/supabase.ts` | Supabase client init. Fails gracefully to a placeholder client if env vars are missing. |
+
+## Components
+
+Components live in `components/` organized by domain:
+
+- **`components/events/`** — `event-card`, `fight-card`, `fight-row`, `countdown-timer`, `remind-me-toggle`, `add-to-calendar-button`
+- **`components/fighters/`** — `fighter-card`
+
+`fight-row.tsx` resolves fighter images in priority order: local bundled image (`lib/fighter-images.ts`) → remote `image_url` from DB → placeholder icon.
 
 ## Environment Variables
 
@@ -72,7 +86,7 @@ All client-side vars must use the `EXPO_PUBLIC_` prefix to be bundled by Expo.
 
 ## Platform Constraints
 
-This is a **native mobile application** (iOS and Android) built with Expo. It is NOT a web-first project. All decisions must prioritize native mobile compatibility.
+This is a **native mobile application** (iOS and Android) built with Expo. It is NOT a web-first project.
 
 **Forbidden:**
 - No Node.js-only libraries
@@ -86,15 +100,10 @@ This is a **native mobile application** (iOS and Android) built with Expo. It is
 - Mobile app = frontend only. Supabase = backend + database layer.
 - All database communication goes through Supabase via `@supabase/supabase-js`.
 - If server logic is required, use Supabase Edge Functions.
-- Persist sessions using AsyncStorage.
 - Must run inside Expo Go without crashing on both iOS and Android.
 - Real device testing takes priority over web preview.
 
-**UI/UX rules:**
-- Designed for mobile screen sizes first (thumb-friendly layout).
-- Dark-mode optimized, performance-conscious, minimal re-renders.
-
-**Validation check:** Before suggesting any code or dependency, ask: *"Will this run inside Expo Go on iPhone?"* If suggesting something that looks web-only, explain why it works in Expo Go before proceeding. If a feature conflicts with native Expo constraints, propose a mobile-compatible alternative.
+**Validation check:** Before suggesting any code or dependency, ask: *"Will this run inside Expo Go on iPhone?"*
 
 ## Conventions
 
@@ -102,7 +111,12 @@ This is a **native mobile application** (iOS and Android) built with Expo. It is
 - **Database types:** Add new table interfaces to `types/database.ts`. Keep them in sync with Supabase migrations.
 - **Data access:** Keep Supabase queries in `lib/` files, not in components or screens.
 - **New screens:** Add as files under `app/` following Expo Router file-based routing conventions.
-- **Components:** Organized by domain under `components/` (e.g., `components/events/`, `components/fighters/`). New component groups should follow the same pattern.
-- **New Arch default:** React Native New Architecture (Fabric/TurboModules) is the default in SDK 54+ — no `newArchEnabled` flag needed.
-- **Dark-only theme:** `userInterfaceStyle` is set to `"dark"`. The app does not support light mode.
+- **Dark-only theme:** `userInterfaceStyle` is `"dark"`. The app does not support light mode.
 - **Portrait-locked:** Orientation is fixed to portrait.
+
+## Known Technical Debt
+
+- Tab bar in `app/(tabs)/_layout.tsx` hardcodes colors instead of using `constants/theme.ts`.
+- `RemindMeToggle` uses an in-memory `Map` for reminder state — does not survive app relaunches.
+- `date-fns` is installed but unused; `lib/utils.ts` uses native `Date` API.
+- No Clerk → Supabase `profiles` table sync (needed before predictions feature).
