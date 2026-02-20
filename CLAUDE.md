@@ -70,6 +70,32 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY   # Supabase publishable key (public, RLS-p
 
 All client-side vars must use the `EXPO_PUBLIC_` prefix to be bundled by Expo.
 
+## Platform Constraints
+
+This is a **native mobile application** (iOS and Android) built with Expo. It is NOT a web-first project. All decisions must prioritize native mobile compatibility.
+
+**Forbidden:**
+- No Node.js-only libraries
+- No direct Postgres connections from the client
+- No Prisma or server-side ORM inside the app
+- No server-only environment variables in frontend code
+- No localhost dependencies
+- No heavy web-only packages
+
+**Architecture rules:**
+- Mobile app = frontend only. Supabase = backend + database layer.
+- All database communication goes through Supabase via `@supabase/supabase-js`.
+- If server logic is required, use Supabase Edge Functions.
+- Persist sessions using AsyncStorage.
+- Must run inside Expo Go without crashing on both iOS and Android.
+- Real device testing takes priority over web preview.
+
+**UI/UX rules:**
+- Designed for mobile screen sizes first (thumb-friendly layout).
+- Dark-mode optimized, performance-conscious, minimal re-renders.
+
+**Validation check:** Before suggesting any code or dependency, ask: *"Will this run inside Expo Go on iPhone?"* If suggesting something that looks web-only, explain why it works in Expo Go before proceeding. If a feature conflicts with native Expo constraints, propose a mobile-compatible alternative.
+
 ## Conventions
 
 - **Styling:** React Native `StyleSheet.create` — no CSS. Use values from `constants/theme.ts` (Colors, Spacing, FontSize, BorderRadius), never hardcode.

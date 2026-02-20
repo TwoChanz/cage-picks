@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase"
 import type { Fighter } from "@/types/database"
 
 // ── Toggle for mock vs. live data ──
-const USE_MOCK = true
+const USE_MOCK = false
 
 // ── Weight class constants ──
 export const WEIGHT_CLASSES = [
@@ -154,6 +154,27 @@ const MOCK_FIGHTERS: Fighter[] = [
     sub_percentage: 18,
     dec_percentage: 23,
     current_win_streak: 10,
+    image_url: null,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "f7",
+    name: "Magomed Ankalaev",
+    nickname: "The Machine",
+    slug: "magomed-ankalaev",
+    weight_class: "Light Heavyweight",
+    record_wins: 19,
+    record_losses: 1,
+    record_draws: 1,
+    record_nc: 1,
+    height_cm: 191,
+    reach_cm: 188,
+    stance: "Orthodox",
+    ko_percentage: 47,
+    sub_percentage: 11,
+    dec_percentage: 42,
+    current_win_streak: 4,
     image_url: null,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",

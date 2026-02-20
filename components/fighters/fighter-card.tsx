@@ -12,7 +12,7 @@
  * |          27-1-0  |  Lightweight  |  15W streak    |
  * +--------------------------------------------------+
  */
-import { View, Text, StyleSheet, Pressable } from "react-native"
+import { View, Text, StyleSheet, Pressable, Image } from "react-native"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import {
@@ -22,6 +22,7 @@ import {
   BorderRadius,
 } from "@/constants/theme"
 import type { Fighter } from "@/types/database"
+import { getFighterImage } from "@/lib/fighter-images"
 
 interface FighterCardProps {
   fighter: Fighter
@@ -37,6 +38,7 @@ export function FighterCard({
   const router = useRouter()
 
   const record = `${fighter.record_wins}-${fighter.record_losses}-${fighter.record_draws}`
+  const localImage = getFighterImage(fighter.slug)
 
   return (
     <Pressable
@@ -46,13 +48,22 @@ export function FighterCard({
       ]}
       onPress={() => router.push(`/(tabs)/fighters/${fighter.slug}`)}
     >
-      {/* Left section: avatar placeholder */}
+      {/* Left section: fighter headshot */}
       <View style={styles.avatar}>
-        <Ionicons
-          name="person-circle"
-          size={48}
-          color={Colors.foregroundMuted}
-        />
+        {localImage ? (
+          <Image source={localImage} style={styles.avatarImage} />
+        ) : fighter.image_url ? (
+          <Image
+            source={{ uri: fighter.image_url }}
+            style={styles.avatarImage}
+          />
+        ) : (
+          <Ionicons
+            name="person-circle"
+            size={48}
+            color={Colors.foregroundMuted}
+          />
+        )}
       </View>
 
       {/* Center section: fighter info */}
@@ -125,12 +136,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
   },
 
-  // Avatar placeholder
+  // Avatar
   avatar: {
     width: 48,
     height: 48,
     justifyContent: "center",
     alignItems: "center",
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: Colors.surfaceLight,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
 
   // Fighter info

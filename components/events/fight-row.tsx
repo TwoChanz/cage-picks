@@ -20,11 +20,12 @@
  * │         Lightweight · 5 Rounds               │
  * └──────────────────────────────────────────────┘
  */
-import { View, Text, StyleSheet, Pressable } from "react-native"
+import { View, Text, StyleSheet, Pressable, Image } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Colors, FontSize, Spacing, BorderRadius } from "@/constants/theme"
 import { formatRecord } from "@/lib/utils"
 import type { FightWithFighters } from "@/types/database"
+import { getFighterImage } from "@/lib/fighter-images"
 
 interface FightRowProps {
   fight: FightWithFighters
@@ -67,6 +68,23 @@ export function FightRow({
     }
   }
 
+  const imageA = getFighterImage(fighter_a.slug)
+  const imageB = getFighterImage(fighter_b.slug)
+
+  const renderAvatar = (image: ReturnType<typeof getFighterImage>, fighter: typeof fighter_a) => {
+    if (image) {
+      return <Image source={image} style={styles.fighterAvatar} />
+    } else if (fighter.image_url) {
+      return <Image source={{ uri: fighter.image_url }} style={styles.fighterAvatar} />
+    } else {
+      return (
+        <View style={styles.fighterAvatarPlaceholder}>
+          <Ionicons name="person" size={16} color={Colors.foregroundMuted} />
+        </View>
+      )
+    }
+  }
+
   return (
     <View style={[styles.container, fight.is_main_event && styles.mainEvent]}>
       {/* Main Event badge */}
@@ -98,17 +116,22 @@ export function FightRow({
             onPress={handlePickA}
             disabled={isLocked}
           >
-            <Text style={[styles.fighterName, pickedA && styles.pickedName]} numberOfLines={1}>
-              {fighter_a.name}
-            </Text>
-            <Text style={styles.record}>
-              {formatRecord(
-                fighter_a.record_wins,
-                fighter_a.record_losses,
-                fighter_a.record_draws,
-                fighter_a.record_nc
-              )}
-            </Text>
+            <View style={styles.fighterHeader}>
+              {renderAvatar(imageA, fighter_a)}
+              <View style={styles.fighterInfo}>
+                <Text style={[styles.fighterName, pickedA && styles.pickedName]} numberOfLines={1}>
+                  {fighter_a.name}
+                </Text>
+                <Text style={styles.record}>
+                  {formatRecord(
+                    fighter_a.record_wins,
+                    fighter_a.record_losses,
+                    fighter_a.record_draws,
+                    fighter_a.record_nc
+                  )}
+                </Text>
+              </View>
+            </View>
             {fighter_a.nickname && (
               <Text style={styles.nickname} numberOfLines={1}>
                 &quot;{fighter_a.nickname}&quot;
@@ -136,17 +159,22 @@ export function FightRow({
           </Pressable>
         ) : (
           <View style={styles.fighterSide}>
-            <Text style={styles.fighterName} numberOfLines={1}>
-              {fighter_a.name}
-            </Text>
-            <Text style={styles.record}>
-              {formatRecord(
-                fighter_a.record_wins,
-                fighter_a.record_losses,
-                fighter_a.record_draws,
-                fighter_a.record_nc
-              )}
-            </Text>
+            <View style={styles.fighterHeader}>
+              {renderAvatar(imageA, fighter_a)}
+              <View style={styles.fighterInfo}>
+                <Text style={styles.fighterName} numberOfLines={1}>
+                  {fighter_a.name}
+                </Text>
+                <Text style={styles.record}>
+                  {formatRecord(
+                    fighter_a.record_wins,
+                    fighter_a.record_losses,
+                    fighter_a.record_draws,
+                    fighter_a.record_nc
+                  )}
+                </Text>
+              </View>
+            </View>
             {fighter_a.nickname && (
               <Text style={styles.nickname} numberOfLines={1}>
                 &quot;{fighter_a.nickname}&quot;
@@ -176,17 +204,22 @@ export function FightRow({
             onPress={handlePickB}
             disabled={isLocked}
           >
-            <Text style={[styles.fighterName, styles.textRight, pickedB && styles.pickedName]} numberOfLines={1}>
-              {fighter_b.name}
-            </Text>
-            <Text style={[styles.record, styles.textRight]}>
-              {formatRecord(
-                fighter_b.record_wins,
-                fighter_b.record_losses,
-                fighter_b.record_draws,
-                fighter_b.record_nc
-              )}
-            </Text>
+            <View style={[styles.fighterHeader, styles.fighterHeaderRight]}>
+              <View style={styles.fighterInfo}>
+                <Text style={[styles.fighterName, styles.textRight, pickedB && styles.pickedName]} numberOfLines={1}>
+                  {fighter_b.name}
+                </Text>
+                <Text style={[styles.record, styles.textRight]}>
+                  {formatRecord(
+                    fighter_b.record_wins,
+                    fighter_b.record_losses,
+                    fighter_b.record_draws,
+                    fighter_b.record_nc
+                  )}
+                </Text>
+              </View>
+              {renderAvatar(imageB, fighter_b)}
+            </View>
             {fighter_b.nickname && (
               <Text style={[styles.nickname, styles.textRight]} numberOfLines={1}>
                 &quot;{fighter_b.nickname}&quot;
@@ -214,17 +247,22 @@ export function FightRow({
           </Pressable>
         ) : (
           <View style={[styles.fighterSide, styles.fighterRight]}>
-            <Text style={[styles.fighterName, styles.textRight]} numberOfLines={1}>
-              {fighter_b.name}
-            </Text>
-            <Text style={[styles.record, styles.textRight]}>
-              {formatRecord(
-                fighter_b.record_wins,
-                fighter_b.record_losses,
-                fighter_b.record_draws,
-                fighter_b.record_nc
-              )}
-            </Text>
+            <View style={[styles.fighterHeader, styles.fighterHeaderRight]}>
+              <View style={styles.fighterInfo}>
+                <Text style={[styles.fighterName, styles.textRight]} numberOfLines={1}>
+                  {fighter_b.name}
+                </Text>
+                <Text style={[styles.record, styles.textRight]}>
+                  {formatRecord(
+                    fighter_b.record_wins,
+                    fighter_b.record_losses,
+                    fighter_b.record_draws,
+                    fighter_b.record_nc
+                  )}
+                </Text>
+              </View>
+              {renderAvatar(imageB, fighter_b)}
+            </View>
             {fighter_b.nickname && (
               <Text style={[styles.nickname, styles.textRight]} numberOfLines={1}>
                 &quot;{fighter_b.nickname}&quot;
@@ -295,7 +333,7 @@ const styles = StyleSheet.create({
   // Fighter matchup
   matchup: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
   fighterSide: {
     flex: 1,
@@ -303,20 +341,45 @@ const styles = StyleSheet.create({
   fighterRight: {
     alignItems: "flex-end",
   },
+  fighterHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  fighterHeaderRight: {
+    justifyContent: "flex-end",
+  },
+  fighterInfo: {
+    flex: 1,
+  },
+  fighterAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surfaceLight,
+  },
+  fighterAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surfaceLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   fighterName: {
     color: Colors.foreground,
     fontSize: FontSize.base,
     fontWeight: "700",
   },
+  nickname: {
+    color: Colors.foregroundMuted,
+    fontSize: FontSize.xs,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
   record: {
     color: Colors.foregroundMuted,
     fontSize: FontSize.xs,
-    marginTop: 2,
-  },
-  nickname: {
-    color: Colors.accent,
-    fontSize: FontSize.xs,
-    fontStyle: "italic",
     marginTop: 2,
   },
   textRight: {

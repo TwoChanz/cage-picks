@@ -40,6 +40,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
+  Image,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -50,6 +51,7 @@ import {
   BorderRadius,
 } from "@/constants/theme"
 import { getFighterBySlug } from "@/lib/fighters"
+import { getFighterImage } from "@/lib/fighter-images"
 import type { Fighter } from "@/types/database"
 
 export default function FighterDetailScreen() {
@@ -102,6 +104,7 @@ export default function FighterDetailScreen() {
 
   const record = `${fighter.record_wins}-${fighter.record_losses}-${fighter.record_draws}`
   const hasNc = fighter.record_nc > 0
+  const localImage = getFighterImage(fighter.slug)
 
   return (
     <>
@@ -123,11 +126,20 @@ export default function FighterDetailScreen() {
       >
         {/* ── Hero section ── */}
         <View style={styles.heroSection}>
-          <Ionicons
-            name="person-circle"
-            size={96}
-            color={Colors.foregroundMuted}
-          />
+          {localImage ? (
+            <Image source={localImage} style={styles.heroImage} />
+          ) : fighter.image_url ? (
+            <Image
+              source={{ uri: fighter.image_url }}
+              style={styles.heroImage}
+            />
+          ) : (
+            <Ionicons
+              name="person-circle"
+              size={96}
+              color={Colors.foregroundMuted}
+            />
+          )}
 
           <Text style={styles.fighterName}>{fighter.name}</Text>
 
@@ -350,6 +362,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: Spacing["2xl"],
     gap: Spacing.xs,
+  },
+  heroImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.surfaceLight,
   },
   fighterName: {
     color: Colors.foreground,
