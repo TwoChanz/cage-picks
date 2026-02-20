@@ -26,6 +26,9 @@ export const WEIGHT_CLASSES = [
   "Featherweight",
   "Bantamweight",
   "Flyweight",
+  "Women's Strawweight",
+  "Women's Flyweight",
+  "Women's Bantamweight",
 ] as const
 
 export type WeightClass = (typeof WEIGHT_CLASSES)[number]
