@@ -80,6 +80,7 @@ export async function savePrediction(
   profileId: string,
   fightId: string,
   pickedFighterId: string,
+  wasFavoriteAtPick: boolean = false,
   groupId: string | null = null
 ): Promise<Prediction | null> {
   if (USE_MOCK) {
@@ -93,6 +94,7 @@ export async function savePrediction(
       fight_id: fightId,
       group_id: groupId,
       picked_fighter_id: pickedFighterId,
+      was_favorite_at_pick: wasFavoriteAtPick,
       is_correct: null,
       points_earned: 0,
       locked_at: null,
@@ -112,6 +114,7 @@ export async function savePrediction(
         fight_id: fightId,
         group_id: groupId,
         picked_fighter_id: pickedFighterId,
+        was_favorite_at_pick: wasFavoriteAtPick,
         updated_at: new Date().toISOString(),
       },
       {
@@ -127,6 +130,38 @@ export async function savePrediction(
   }
 
   return data as Prediction
+}
+
+/**
+ * Delete a prediction for a fight (deselection support).
+ *
+ * In mock mode, removes the prediction from the in-memory store.
+ * In live mode, deletes the row from Supabase.
+ *
+ * @param profileId - The user's profile ID
+ * @param fightId   - The fight to remove the prediction for
+ */
+export async function deletePrediction(
+  profileId: string,
+  fightId: string
+): Promise<boolean> {
+  if (USE_MOCK) {
+    const key = `${profileId}:${fightId}`
+    return mockPredictions.delete(key)
+  }
+
+  const { error } = await supabase
+    .from("predictions")
+    .delete()
+    .eq("profile_id", profileId)
+    .eq("fight_id", fightId)
+    .is("group_id", null)
+
+  if (error) {
+    console.error("Failed to delete prediction:", error)
+    return false
+  }
+  return true
 }
 
 /**
