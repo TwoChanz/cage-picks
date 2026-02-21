@@ -51,6 +51,8 @@ export function FightRow({
   const pickedA = pickedFighterId === fighter_a.id
   const pickedB = pickedFighterId === fighter_b.id
   const hasPick = pickedA || pickedB
+  const isFavA = fight.favorite_fighter_id === fighter_a.id
+  const isFavB = fight.favorite_fighter_id === fighter_b.id
 
   // Determine result styling for completed fights
   const showResult = isLocked && hasPick && isCorrect !== undefined && isCorrect !== null
@@ -130,6 +132,7 @@ export function FightRow({
                     fighter_a.record_nc
                   )}
                 </Text>
+                {isFavA && <Text style={styles.favBadge}>FAV</Text>}
               </View>
             </View>
             {fighter_a.nickname && (
@@ -173,6 +176,7 @@ export function FightRow({
                     fighter_a.record_nc
                   )}
                 </Text>
+                {isFavA && <Text style={styles.favBadge}>FAV</Text>}
               </View>
             </View>
             {fighter_a.nickname && (
@@ -217,6 +221,7 @@ export function FightRow({
                     fighter_b.record_nc
                   )}
                 </Text>
+                {isFavB && <Text style={[styles.favBadge, styles.textRight]}>FAV</Text>}
               </View>
               {renderAvatar(imageB, fighter_b)}
             </View>
@@ -260,6 +265,7 @@ export function FightRow({
                     fighter_b.record_nc
                   )}
                 </Text>
+                {isFavB && <Text style={[styles.favBadge, styles.textRight]}>FAV</Text>}
               </View>
               {renderAvatar(imageB, fighter_b)}
             </View>
@@ -380,6 +386,13 @@ const styles = StyleSheet.create({
   record: {
     color: Colors.foregroundMuted,
     fontSize: FontSize.xs,
+    marginTop: 2,
+  },
+  favBadge: {
+    color: Colors.accent,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.5,
     marginTop: 2,
   },
   textRight: {
