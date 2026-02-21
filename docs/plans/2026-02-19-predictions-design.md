@@ -1,76 +1,93 @@
-# Predictions Feature Design
+# Predictions Feature Design (Rules v1.0)
 
 ## Summary
 
-Users make fight predictions directly on the event detail screen by tapping a fighter on each fight row. Picks lock when the event starts. Correct picks earn 1 point (favorite) or 2 points (underdog).
+Users make fight predictions directly on the event detail screen by tapping a fighter on each fight row. Picks lock when the event starts. Correct picks earn 1 point (favorite/pick'em) or 2 points (underdog). Scoring is enforced server-side via Postgres triggers.
 
 ## UX Flow
 
 1. User opens an event detail screen and sees the fight card.
 2. Each FightRow is tappable on either fighter's side. Tapping a fighter selects them as the user's pick with a visual highlight (accent border/glow).
 3. Tapping the same fighter again deselects the pick.
-4. A collapsible PredictionSummary banner at the top of the event detail screen shows "X/Y fights picked" with a compact list of selections.
+4. A prediction header at the top shows "X/Y picks" with a prompt to tap fighters.
 5. All picks for an event lock when the first fight starts (based on `event.date`). After lock, picks display as read-only with correct/incorrect badges as results come in.
 
 ## Scoring
 
 - Correct pick on the favorite: 1 point
 - Correct pick on the underdog: 2 points
+- Pick'em (no favorite set): 1 point for correct pick
 - Incorrect pick: 0 points
-- Determined by a `favorite_fighter_id` column on the `fights` table (admin-set).
+- Draw / No Contest / Cancelled: 0 points, no refunds
+- Determined by `favorite_fighter_id` column on the `fights` table (admin-set).
+- Scoring uses `was_favorite_at_pick` snapshot, never the current `favorite_fighter_id` value.
 
 ## Database Changes
 
-Add `favorite_fighter_id` (nullable UUID, FK to `fighters.id`) to the `fights` table. This indicates which fighter is the betting favorite. If null, both fighters earn 1 point on a correct pick (pick'em).
+Migration: `005_predictions_support.sql`
 
-Migration: `004_add_favorite_fighter.sql`
+### fights table
+- Add `favorite_fighter_id` (nullable UUID, FK to `fighters.id`). Indicates the betting favorite. Null = pick'em.
+
+### predictions table
+- Add `was_favorite_at_pick` (BOOLEAN NOT NULL). Snapshot of whether the picked fighter was the favorite at the time the pick was made. Used for scoring — ensures line movement doesn't retroactively change point values.
+
+### Server-side lock enforcement (RLS)
+- INSERT policy: reject when `now() >= event.date` (joined through `fights → events`).
+- UPDATE policy: same time-based check + own-predictions check.
+- DELETE policy: same time-based check + own-predictions check.
+- Client-side lock check remains for UX (disable tapping), but server is the source of truth.
+
+### Score calculation trigger
+- Trigger on `fights` table: when `winner_id` is set or changed, automatically compute `is_correct` and `points_earned` for ALL predictions on that fight.
+- Logic: if `picked_fighter_id = winner_id` → `is_correct = true`, `points_earned = was_favorite_at_pick ? 1 : 2`. Otherwise `is_correct = false`, `points_earned = 0`.
+- If `winner_id` is set to NULL (result reversed/cancelled), reset `is_correct = NULL` and `points_earned = 0`.
 
 ## Data Layer — `lib/predictions.ts`
 
-Functions following the existing N+1 prevention pattern:
+Existing functions (already implemented with mock support):
 
-- `getEventPredictions(profileId, eventId)` — Fetch all user picks for an event. Single query joining predictions with fights filtered by event_id.
-- `upsertPrediction(profileId, fightId, pickedFighterId)` — Create or update a pick using Supabase upsert on the `(profile_id, fight_id, group_id)` unique constraint. group_id is null for public predictions.
+- `getUserPredictionsForEvent(profileId, fightIds)` — Fetch all user picks for event fights. Returns `Map<string, Prediction>`.
+- `savePrediction(profileId, fightId, pickedFighterId, groupId?)` — Upsert a pick. **Updated to include `was_favorite_at_pick`.**
+- `isFightLocked(fightStatus)` — Check if fight status prevents new picks.
+
+New functions:
+
 - `deletePrediction(profileId, fightId)` — Remove a pick (deselect).
-- `isEventLocked(eventDate)` — Pure function comparing event date to current time.
 
-## Components
+## Components (Already Implemented)
 
-### Modified: `FightRow`
+### `FightRow` (modified)
+- Tappable fighter sides with Pressable wrappers.
+- Shows "YOUR PICK" indicator with lock/result icons.
+- Props: `pickedFighterId`, `onPickFighter`, `isLocked`, `isCorrect`.
 
-- Accepts `prediction` prop (the user's current pick for this fight, if any).
-- Accepts `onPickFighter(fightId, fighterId)` callback.
-- Accepts `locked` boolean to disable interaction after event starts.
-- Visual states: unpicked (default), picked-fighter-a (left highlight), picked-fighter-b (right highlight), correct (green badge), incorrect (red badge), pending (fight not yet scored).
+### `FightCard` + `EventCard` (modified)
+- Thread prediction props (Map, onPickFighter) down to FightRow.
 
-### New: `PredictionSummary`
-
-- Sits at the top of the event detail screen.
-- Shows pick count ("8/14 fights picked"), compact list of picks (fighter names).
-- Collapsible. Shows locked/unlocked status.
-- After event: shows score summary (points earned, accuracy percentage).
-
-### New: `PredictionBadge`
-
-- Small inline indicator on FightRow for post-lock display.
-- States: pending (gray), correct (green checkmark), incorrect (red X).
+### Event Detail Screen `[slug].tsx` (modified)
+- Prediction header with pick counter.
+- Optimistic updates with Map-based state.
+- **Needs: deselection support (tap same fighter to remove pick).**
 
 ## State Management
 
-- Local `useState` in the event detail screen holds predictions array.
-- Fetched on mount via `getEventPredictions`.
-- Optimistic updates: UI updates immediately on tap, Supabase upsert runs in the background.
-- On error, revert the optimistic update and show a brief toast/alert.
+- Local `useState<Map<string, Prediction>>` in the event detail screen.
+- Fetched on mount via `getUserPredictionsForEvent`.
+- Optimistic updates: UI updates immediately on tap, Supabase upsert runs in background.
+- On error, revert the optimistic update and show Alert.
 
 ## Lock Logic
 
-- Compare `event.date` (first fight start time) to `new Date()`.
-- If current time >= event date, all FightRows render as locked (non-tappable).
-- The `locked_at` field on the prediction row is set to the event start time when the event begins (can be handled by a Supabase trigger or edge function later).
+- Client-side: compare `event.date` to `new Date()` for UX disabling.
+- Server-side: RLS policies reject writes after event start time (source of truth).
+- `isFightLocked(fight.status)` checks individual fight status for per-fight locking.
 
 ## Out of Scope (Future Phases)
 
-- Group predictions (Phase 3 — uses the existing `group_id` on predictions)
+- Group predictions (Phase 3 — uses existing `group_id` on predictions)
 - Leaderboard (Phase 4 — aggregates points_earned across predictions)
 - Method/round predictions
 - Live fight status updates
+- PredictionSummary collapsible banner (deferred — current header is sufficient)
+- PredictionBadge standalone component (deferred — FightRow already handles result display inline)

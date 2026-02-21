@@ -12,7 +12,16 @@ import { ImageSourcePropType } from "react-native"
 
 const FIGHTER_IMAGES: Record<string, ImageSourcePropType> = {
   "alex-pereira": require("@/assets/images/fighters/Alex.Pereira.png"),
+  "alexander-volkanovski": require("@/assets/images/fighters/Alexander.png"),
+  "alexandre-pantoja": require("@/assets/images/fighters/Alexandre.png"),
+  "arman-tsarukyan": require("@/assets/images/fighters/Arman.png"),
+  "islam-makhachev": require("@/assets/images/fighters/Makhachev.png"),
+  "ilia-topuria": require("@/assets/images/fighters/Topuria.png"),
+  "khamzat-chimaev": require("@/assets/images/fighters/Chimaev.png"),
   "magomed-ankalaev": require("@/assets/images/fighters/magomed.ankalaev.png"),
+  "merab-dvalishvili": require("@/assets/images/fighters/Merab.png"),
+  "petr-yan": require("@/assets/images/fighters/Petr.png"),
+  "tom-aspinall": require("@/assets/images/fighters/Aspinall.png"),
 }
 
 /**
