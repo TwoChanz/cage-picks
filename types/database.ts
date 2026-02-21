@@ -91,6 +91,7 @@ export interface Fight {
   round: number | null           // What round it ended
   time: string | null            // "4:32" time in round
   started_at: string | null
+  favorite_fighter_id: string | null  // Which fighter is the betting favorite (null = pick'em)
   created_at: string
   updated_at: string
 }
@@ -158,6 +159,7 @@ export interface Prediction {
   fight_id: string
   group_id: string | null        // Null = public prediction
   picked_fighter_id: string
+  was_favorite_at_pick: boolean       // Snapshot: was picked fighter the favorite at pick time?
   is_correct: boolean | null     // Null until fight scored
   points_earned: number
   locked_at: string | null
