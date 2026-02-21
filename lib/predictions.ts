@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase"
 import type { Prediction } from "@/types/database"
 
 // ── Toggle for mock vs. live data ──
-const USE_MOCK = true
+const USE_MOCK = false
 
 // ── In-memory store for mock predictions (keyed by `profileId:fightId`) ──
 const mockPredictions = new Map<string, Prediction>()
