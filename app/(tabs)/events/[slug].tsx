@@ -25,7 +25,6 @@ import {
   Pressable,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
-import { useUser } from "@clerk/clerk-expo"
 import { Ionicons } from "@expo/vector-icons"
 import { Colors, FontSize, Spacing, BorderRadius } from "@/constants/theme"
 import { getEventBySlug, type EventWithFights } from "@/lib/events"
@@ -35,22 +34,20 @@ import {
   deletePrediction,
 } from "@/lib/predictions"
 import { EventCard } from "@/components/events/event-card"
+import { useProfile } from "@/components/providers/profile-provider"
 import type { Prediction } from "@/types/database"
-
-/** Mock profile ID for development when Clerk auth isn't available */
-const MOCK_PROFILE_ID = "mock-user-001"
 
 export default function EventDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const router = useRouter()
-  const { user } = useUser()
+  const { profile } = useProfile()
   const [event, setEvent] = useState<EventWithFights | null>(null)
   const [predictions, setPredictions] = useState<Map<string, Prediction>>(
     new Map()
   )
   const [isLoading, setIsLoading] = useState(true)
 
-  const profileId = user?.id ?? MOCK_PROFILE_ID
+  const profileId = profile?.id ?? null
 
   useEffect(() => {
     if (!slug) return
@@ -60,7 +57,7 @@ export default function EventDetailScreen() {
         const eventData = await getEventBySlug(slug!)
         setEvent(eventData)
 
-        if (eventData) {
+        if (eventData && profileId) {
           const fightIds = eventData.fights.map((f) => f.id)
           const userPredictions = await getUserPredictionsForEvent(
             profileId,
@@ -84,6 +81,7 @@ export default function EventDetailScreen() {
    */
   const handlePickFighter = useCallback(
     async (fightId: string, fighterId: string) => {
+      if (!profileId) return
       const existing = predictions.get(fightId)
 
       // ── Deselect: tapping the same fighter removes the pick ──

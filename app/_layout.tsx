@@ -17,13 +17,13 @@
  *   ├── auth      → Sign-in / Sign-up screens
  *   └── event detail, etc. → Modal/pushed screens
  */
-import { useEffect } from "react"
 import { Text, View } from "react-native"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { tokenCache } from "@/lib/auth"
+import { ProfileProvider } from "@/components/providers/profile-provider"
 import { Colors } from "@/constants/theme"
 
 /**
@@ -50,6 +50,7 @@ export default function RootLayout() {
       tokenCache={tokenCache}
     >
       <ClerkLoaded>
+        <ProfileProvider>
         <SafeAreaProvider>
           {/* Light-content = white text in status bar (for dark backgrounds) */}
           <StatusBar style="light" />
@@ -77,6 +78,7 @@ export default function RootLayout() {
             />
           </Stack>
         </SafeAreaProvider>
+        </ProfileProvider>
       </ClerkLoaded>
     </ClerkProvider>
   )
