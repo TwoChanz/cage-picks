@@ -32,6 +32,7 @@ import { getEventBySlug, type EventWithFights } from "@/lib/events"
 import {
   getUserPredictionsForEvent,
   savePrediction,
+  deletePrediction,
 } from "@/lib/predictions"
 import { EventCard } from "@/components/events/event-card"
 import type { Prediction } from "@/types/database"
@@ -83,16 +84,44 @@ export default function EventDetailScreen() {
    */
   const handlePickFighter = useCallback(
     async (fightId: string, fighterId: string) => {
-      // Optimistic update: immediately reflect the pick in UI
+      const existing = predictions.get(fightId)
+
+      // ── Deselect: tapping the same fighter removes the pick ──
+      if (existing?.picked_fighter_id === fighterId) {
+        // Optimistic delete
+        setPredictions((prev) => {
+          const next = new Map(prev)
+          next.delete(fightId)
+          return next
+        })
+
+        const success = await deletePrediction(profileId, fightId)
+        if (!success) {
+          // Revert on failure
+          setPredictions((prev) => {
+            const next = new Map(prev)
+            next.set(fightId, existing)
+            return next
+          })
+        }
+        return
+      }
+
+      // ── Determine was_favorite_at_pick ──
+      const fight = event?.fights.find((f) => f.id === fightId)
+      const wasFavoriteAtPick = fight?.favorite_fighter_id === fighterId
+
+      // ── Upsert: new pick or switching fighter ──
+      // Optimistic update
       setPredictions((prev) => {
         const next = new Map(prev)
-        const existing = prev.get(fightId)
         next.set(fightId, {
           id: existing?.id ?? `temp-${fightId}`,
           profile_id: profileId,
           fight_id: fightId,
           group_id: null,
           picked_fighter_id: fighterId,
+          was_favorite_at_pick: wasFavoriteAtPick,
           is_correct: null,
           points_earned: 0,
           locked_at: null,
@@ -103,16 +132,27 @@ export default function EventDetailScreen() {
       })
 
       // Persist in background
-      const saved = await savePrediction(profileId, fightId, fighterId)
+      const saved = await savePrediction(profileId, fightId, fighterId, wasFavoriteAtPick)
       if (saved) {
         setPredictions((prev) => {
           const next = new Map(prev)
           next.set(fightId, saved)
           return next
         })
+      } else {
+        // Revert on failure
+        setPredictions((prev) => {
+          const next = new Map(prev)
+          if (existing) {
+            next.set(fightId, existing)
+          } else {
+            next.delete(fightId)
+          }
+          return next
+        })
       }
     },
-    [profileId]
+    [profileId, event?.fights, predictions]
   )
 
   // Count picks for the progress indicator
