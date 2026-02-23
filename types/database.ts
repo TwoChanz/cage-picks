@@ -189,6 +189,39 @@ export interface MeetupResponse {
 }
 
 // --------------------------------------------------------------------------
+// GROUP COMPOSITE TYPES (computed from joins, not standalone tables)
+// --------------------------------------------------------------------------
+
+export interface GroupMemberWithProfile extends GroupMember {
+  profile: Profile
+}
+
+export interface GroupDetail extends Group {
+  members: GroupMemberWithProfile[]
+  memberCount: number
+  currentUserRole: GroupRole | null
+}
+
+export interface GroupStanding {
+  profileId: string
+  displayName: string
+  avatarUrl: string | null
+  rank: number
+  totalPoints: number
+  totalPredictions: number
+  correctPredictions: number
+  accuracy: number
+}
+
+export interface GroupCardData extends Group {
+  memberCount: number
+  currentUserRank: number | null
+  nextEvent: Event | null
+  lastEventName: string | null
+  lastEventRank: number | null
+}
+
+// --------------------------------------------------------------------------
 // LEADERBOARD (computed, not a table — calculated from predictions)
 // --------------------------------------------------------------------------
 
