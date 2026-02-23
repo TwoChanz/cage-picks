@@ -1,0 +1,44 @@
+{
+  "buildCommand": "node -e \"require('fs').writeFileSync('.env', Object.entries(process.env).filter(([k])=>k.startsWith('EXPO_PUBLIC_')).map(([k,v])=>k+'='+v).join('\\n')); console.log(require('fs').readFileSync('.env','utf8'))\" && npx expo export --platform web",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/((?!_expo|assets|icons|favicon\\.ico|manifest\\.json|service-worker\\.js).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/service-worker.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
+    },
+    {
+      "source": "/_expo/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

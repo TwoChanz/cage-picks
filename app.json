@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.six1fivedevs.fightnightos",
       "infoPlist": {
         "NSCalendarsUsageDescription": "FightNight OS needs calendar access to add fight events to your calendar.",
-        "NSCalendarsFullAccessUsageDescription": "FightNight OS needs calendar access to add fight events to your calendar."
+        "NSCalendarsFullAccessUsageDescription": "FightNight OS needs calendar access to add fight events to your calendar.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -28,7 +29,9 @@
       "package": "com.six1fivedevs.fightnightos",
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "web": {
@@ -57,6 +60,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "05604243-9a8a-43e7-989b-d7926c31374b"
+      }
     }
   }
 }

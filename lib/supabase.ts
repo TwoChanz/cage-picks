@@ -7,18 +7,12 @@
  * This client uses the publishable key (public, limited by RLS policies).
  * For admin operations, use Supabase Edge Functions on the server side.
  *
- * IMPORTANT: Environment variables in Expo use a different prefix than Next.js.
- * - Next.js used: NEXT_PUBLIC_SUPABASE_URL
- * - Expo uses: EXPO_PUBLIC_SUPABASE_URL
- *
- * The EXPO_PUBLIC_ prefix tells Expo to include these in the app bundle
- * (they're safe to expose — the publishable key is public by design,
- * and RLS policies protect the data).
- *
  * AUTH INTEGRATION:
- * setTokenResolver / clearTokenResolver inject Clerk's JWT into every
- * Supabase request via a global.fetch override. This keeps the singleton
- * export pattern intact — all existing lib/*.ts imports work unchanged.
+ * Clerk handles authentication. We inject Clerk's JWT into every Supabase
+ * request via a global.fetch override. Call setTokenResolver() with a
+ * function that returns the Clerk JWT, and every Supabase request will
+ * automatically include it as the Authorization header. This lets the
+ * singleton client work for both anonymous and authenticated requests.
  */
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 
@@ -30,25 +24,25 @@ type TokenResolver = () => Promise<string | null>
 let _tokenResolver: TokenResolver | null = null
 
 /**
- * Register a function that returns the current Clerk JWT.
- * Called by ProfileProvider when the user signs in.
+ * Set the function that provides Clerk JWTs for Supabase requests.
+ * Call this when the user signs in.
  */
 export function setTokenResolver(resolver: TokenResolver) {
   _tokenResolver = resolver
 }
 
 /**
- * Clear the token resolver on sign-out.
+ * Clear the token resolver when the user signs out.
  */
 export function clearTokenResolver() {
   _tokenResolver = null
 }
 
-// ── Patched fetch that injects the Authorization header ──
+// ── Fetch override that injects the auth header ──
 const _originalFetch = global.fetch
 
-const patchedFetch: typeof global.fetch = async (input, init) => {
-  // Only inject token for requests to our Supabase instance
+const supabaseFetch: typeof global.fetch = async (input, init) => {
+  // Only inject on Supabase requests
   if (_tokenResolver && supabaseUrl) {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url
     if (url.startsWith(supabaseUrl)) {
@@ -56,26 +50,37 @@ const patchedFetch: typeof global.fetch = async (input, init) => {
       if (token) {
         const headers = new Headers(init?.headers)
         headers.set("Authorization", `Bearer ${token}`)
-        init = { ...init, headers }
+        return _originalFetch(input, { ...init, headers })
       }
     }
   }
   return _originalFetch(input, init)
 }
 
-global.fetch = patchedFetch
+global.fetch = supabaseFetch
 
 function initSupabase(): SupabaseClient {
-  if (!supabaseUrl || !supabasePublishableKey) {
-    console.error(
-      "Missing Supabase env vars:",
-      !supabaseUrl ? "EXPO_PUBLIC_SUPABASE_URL" : "",
-      !supabasePublishableKey ? "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" : ""
-    )
-    // Return a client with placeholder values to avoid crash — queries will fail gracefully
-    return createClient("https://placeholder.supabase.co", "placeholder")
+  try {
+    if (!supabaseUrl || !supabasePublishableKey) {
+      throw new Error("Missing Supabase env vars")
+    }
+    return createClient(supabaseUrl.trim(), supabasePublishableKey.trim())
+  } catch {
+    // Graceful fallback for static rendering (Expo export) and missing env vars.
+    // Queries will fail but the app won't crash during build or first load.
+    return new Proxy({} as SupabaseClient, {
+      get: (_target, prop) => {
+        if (prop === "from") return () => ({
+          select: () => ({ data: [], error: null, eq: () => ({ data: [], error: null }), order: () => ({ data: [], error: null }) }),
+          insert: () => ({ data: null, error: { message: "Supabase not configured" } }),
+          update: () => ({ data: null, error: { message: "Supabase not configured" } }),
+          delete: () => ({ data: null, error: { message: "Supabase not configured" } }),
+        })
+        if (prop === "auth") return { getSession: () => ({ data: { session: null }, error: null }) }
+        return () => {}
+      },
+    })
   }
-  return createClient(supabaseUrl, supabasePublishableKey)
 }
 
 export const supabase = initSupabase()

@@ -1,13 +1,14 @@
 /**
- * ProfileProvider — Bridges Clerk auth to Supabase
+ * ProfileProvider — Bridges Clerk Auth to Supabase Profile
  *
- * Responsibilities:
- * 1. Injects Clerk JWT into the Supabase client via setTokenResolver
- * 2. Ensures a `profiles` row exists for the signed-in user
- * 3. Exposes the profile via useProfile() hook
- * 4. Cleans up on sign-out (clears token resolver + profile state)
+ * This context:
+ * 1. Injects Clerk's JWT into the Supabase client (via setTokenResolver)
+ * 2. Ensures a profile row exists in Supabase on first sign-in
+ * 3. Exposes the profile to all child components via useProfile()
+ *
+ * Must be rendered inside <ClerkLoaded> so Clerk hooks are available.
  */
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useAuth, useUser } from "@clerk/clerk-expo"
 import { setTokenResolver, clearTokenResolver } from "@/lib/supabase"
 import { getOrCreateProfile } from "@/lib/profile"
@@ -25,31 +26,38 @@ const ProfileContext = createContext<ProfileContextValue>({
   refreshProfile: async () => {},
 })
 
-export function useProfile(): ProfileContextValue {
+export function useProfile() {
   return useContext(ProfileContext)
 }
 
-export function ProfileProvider({ children }: { children: ReactNode }) {
+export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, getToken } = useAuth()
   const { user } = useUser()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Sync profile whenever auth state changes
-  const syncProfile = useCallback(async () => {
-    if (!isSignedIn || !user) {
+  // Sync token resolver with auth state
+  useEffect(() => {
+    if (isSignedIn) {
+      setTokenResolver(() => getToken({ template: "supabase" }))
+    } else {
       clearTokenResolver()
       setProfile(null)
+      setIsLoading(false)
+    }
+  }, [isSignedIn, getToken])
+
+  // Sync profile when signed in
+  const syncProfile = useCallback(async () => {
+    if (!isSignedIn || !user) {
       setIsLoading(false)
       return
     }
 
-    // Wire Clerk JWT into Supabase fetch
-    setTokenResolver(() => getToken({ template: "supabase" }))
-
     try {
-      const synced = await getOrCreateProfile(user.id, {
-        username: user.username ?? user.id,
+      setIsLoading(true)
+      const result = await getOrCreateProfile(user.id, {
+        username: user.username ?? user.id.slice(0, 16),
         displayName:
           user.fullName ??
           user.firstName ??
@@ -57,26 +65,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           "Fighter",
         avatarUrl: user.imageUrl ?? null,
       })
-      setProfile(synced)
+      setProfile(result)
     } catch (err) {
       console.error("Profile sync failed:", err)
-      setProfile(null)
     } finally {
       setIsLoading(false)
     }
-  }, [isSignedIn, user, getToken])
+  }, [isSignedIn, user])
 
   useEffect(() => {
     syncProfile()
   }, [syncProfile])
 
-  const refreshProfile = useCallback(async () => {
-    setIsLoading(true)
-    await syncProfile()
-  }, [syncProfile])
-
   return (
-    <ProfileContext.Provider value={{ profile, isLoading, refreshProfile }}>
+    <ProfileContext.Provider
+      value={{ profile, isLoading, refreshProfile: syncProfile }}
+    >
       {children}
     </ProfileContext.Provider>
   )

@@ -15,12 +15,10 @@
  * 4. Board    → Prediction leaderboard
  * 5. Profile  → User settings and stats
  */
+import { Platform } from "react-native"
 import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-
-const ACTIVE_COLOR = "#EF4444"
-const INACTIVE_COLOR = "#6B7280"
-const TAB_BAR_BG = "#0F0F1A"
+import { Colors, FontSize, Spacing } from "@/constants/theme"
 
 /**
  * Helper to render tab bar icons.
@@ -43,29 +41,29 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         // ── Tab Bar Styling ──
-        tabBarActiveTintColor: ACTIVE_COLOR,
-        tabBarInactiveTintColor: INACTIVE_COLOR,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.foregroundMuted,
         tabBarStyle: {
-          backgroundColor: TAB_BAR_BG,
-          borderTopColor: "#1a1a2e",
+          backgroundColor: Colors.background,
+          borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: 85,
-          paddingBottom: 25,  // Extra padding for home indicator on newer iPhones
+          height: Platform.OS === "web" ? 60 : 85,
+          paddingBottom: Platform.OS === "web" ? 8 : 25,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: FontSize.xs,
           fontWeight: "600",
         },
 
         // ── Header Styling ──
         headerStyle: {
-          backgroundColor: TAB_BAR_BG,
+          backgroundColor: Colors.background,
         },
-        headerTintColor: "#f0f0f5",
+        headerTintColor: Colors.foreground,
         headerTitleStyle: {
           fontWeight: "700",
-          fontSize: 18,
+          fontSize: FontSize.lg,
         },
         headerShadowVisible: false,
       }}

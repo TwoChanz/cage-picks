@@ -1,13 +1,9 @@
 /**
  * Profile Data Access Layer
  *
- * Bridges Clerk auth to the Supabase `profiles` table. On first login,
- * creates a new profile row keyed by clerk_user_id. On subsequent logins,
- * returns the existing row.
- *
- * Handles the race condition where two concurrent calls could both
- * fail to find a row and both attempt an INSERT — the unique constraint
- * on clerk_user_id causes one to fail with code 23505, so we retry the SELECT.
+ * Bridges Clerk authentication to the Supabase profiles table.
+ * On first sign-in, creates a profile row linked to the Clerk user ID.
+ * On subsequent sign-ins, returns the existing profile.
  */
 import { supabase } from "@/lib/supabase"
 import type { Profile } from "@/types/database"
@@ -15,15 +11,16 @@ import type { Profile } from "@/types/database"
 interface ProfileDefaults {
   username: string
   displayName: string
-  avatarUrl: string | null
+  avatarUrl?: string | null
 }
 
 /**
- * Get or create a profile row for the given Clerk user.
+ * Get the user's profile, creating one if it doesn't exist.
  *
+ * Flow:
  * 1. SELECT by clerk_user_id
- * 2. If not found, INSERT with defaults from Clerk user object
- * 3. If INSERT hits unique violation (race), retry SELECT
+ * 2. If not found, INSERT a new row
+ * 3. If INSERT hits unique constraint (race condition), retry SELECT
  */
 export async function getOrCreateProfile(
   clerkUserId: string,
@@ -38,27 +35,26 @@ export async function getOrCreateProfile(
 
   if (existing) return existing as Profile
 
-  // PGRST116 = "no rows returned" from .single() — expected on first login
+  // Only continue to INSERT if the error was "no rows" (PGRST116)
   if (selectError && selectError.code !== "PGRST116") {
-    throw new Error(`Profile lookup failed: ${selectError.message}`)
+    throw new Error(`Failed to fetch profile: ${selectError.message}`)
   }
 
-  // 2. Insert new profile
+  // 2. Create new profile
   const { data: created, error: insertError } = await supabase
     .from("profiles")
     .insert({
       clerk_user_id: clerkUserId,
       username: defaults.username,
       display_name: defaults.displayName,
-      avatar_url: defaults.avatarUrl,
-      title: "Fight Fan",
+      avatar_url: defaults.avatarUrl ?? null,
     })
     .select()
     .single()
 
   if (created) return created as Profile
 
-  // 3. Handle race condition — unique violation means another call won the insert
+  // 3. Handle race condition — another request created the profile first
   if (insertError?.code === "23505") {
     const { data: retried, error: retryError } = await supabase
       .from("profiles")
@@ -67,8 +63,8 @@ export async function getOrCreateProfile(
       .single()
 
     if (retried) return retried as Profile
-    throw new Error(`Profile retry failed: ${retryError?.message}`)
+    throw new Error(`Failed to fetch profile after conflict: ${retryError?.message}`)
   }
 
-  throw new Error(`Profile creation failed: ${insertError?.message}`)
+  throw new Error(`Failed to create profile: ${insertError?.message}`)
 }

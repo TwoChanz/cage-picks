@@ -12,9 +12,10 @@
  * Note: Clerk's Expo SDK also supports <SignedIn>/<SignedOut> components
  * for conditional rendering, which we use in the root layout.
  */
-import { View, Text, StyleSheet, Pressable } from "react-native"
+import { View, Text, StyleSheet, Pressable, Platform } from "react-native"
 import { useSSO } from "@clerk/clerk-expo"
 import { useRouter } from "expo-router"
+import * as Linking from "expo-linking"
 import { Ionicons } from "@expo/vector-icons"
 import { Colors, FontSize, Spacing, BorderRadius } from "@/constants/theme"
 
@@ -77,7 +78,19 @@ function SSOButton({
 
   const handlePress = async () => {
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({ strategy })
+      // On web, Clerk needs a redirect URL for the OAuth callback.
+      // On native, expo-auth-session handles this via deep links.
+      const redirectUrl = Platform.OS === "web"
+        ? `${window.location.origin}/sso-callback`
+        : Linking.createURL("/sso-callback")
+
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy,
+        redirectUrl,
+        redirectUrlComplete: Platform.OS === "web"
+          ? `${window.location.origin}/sso-callback`
+          : undefined,
+      })
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId })
         router.replace("/(tabs)/events")
