@@ -17,12 +17,14 @@ import type { Profile } from "@/types/database"
 interface ProfileContextValue {
   profile: Profile | null
   isLoading: boolean
+  error: string | null
   refreshProfile: () => Promise<void>
 }
 
 const ProfileContext = createContext<ProfileContextValue>({
   profile: null,
   isLoading: true,
+  error: null,
   refreshProfile: async () => {},
 })
 
@@ -35,6 +37,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Sync token resolver with auth state
   useEffect(() => {
@@ -43,6 +46,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } else {
       clearTokenResolver()
       setProfile(null)
+      setError(null)
       setIsLoading(false)
     }
   }, [isSignedIn, getToken])
@@ -56,6 +60,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setIsLoading(true)
+      setError(null)
       const result = await getOrCreateProfile(user.id, {
         username: user.username ?? user.id.slice(0, 16),
         displayName:
@@ -66,8 +71,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         avatarUrl: user.imageUrl ?? null,
       })
       setProfile(result)
-    } catch (err) {
-      console.error("Profile sync failed:", err)
+    } catch (err: any) {
+      const msg = err?.message ?? String(err)
+      console.error("Profile sync failed:", msg)
+      setError(msg)
     } finally {
       setIsLoading(false)
     }
@@ -79,7 +86,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ProfileContext.Provider
-      value={{ profile, isLoading, refreshProfile: syncProfile }}
+      value={{ profile, isLoading, error, refreshProfile: syncProfile }}
     >
       {children}
     </ProfileContext.Provider>

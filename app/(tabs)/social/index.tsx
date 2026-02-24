@@ -22,10 +22,44 @@ import { GroupCard } from "@/components/social/group-card"
 import { CreateGroupModal } from "@/components/social/create-group-modal"
 import { JoinGroupModal } from "@/components/social/join-group-modal"
 import { Colors, FontSize, Spacing, BorderRadius } from "@/constants/theme"
+import { useAuth } from "@clerk/clerk-expo"
 import type { GroupCardData } from "@/types/database"
 
+function TokenDebug() {
+  const { getToken } = useAuth()
+  const [info, setInfo] = useState("")
+
+  useEffect(() => {
+    getToken({ template: "supabase" })
+      .then((token) => {
+        if (!token) {
+          setInfo("Token is NULL — Clerk 'supabase' JWT template may not exist")
+          return
+        }
+        // Decode JWT payload (base64) without verification
+        try {
+          const parts = token.split(".")
+          const header = JSON.parse(atob(parts[0]))
+          const payload = JSON.parse(atob(parts[1]))
+          setInfo(
+            `alg: ${header.alg} | iss: ${payload.iss ?? "?"} | sub: ${(payload.sub ?? "").substring(0, 12)}... | exp: ${payload.exp ? new Date(payload.exp * 1000).toISOString() : "?"}`
+          )
+        } catch {
+          setInfo(`Token present (${token.length} chars) but failed to decode`)
+        }
+      })
+      .catch((e) => setInfo(`getToken error: ${e?.message ?? e}`))
+  }, [])
+
+  return (
+    <Text style={{ color: Colors.foregroundMuted, fontSize: 10, marginTop: 12, textAlign: "center", paddingHorizontal: 16 }}>
+      {info || "Checking token..."}
+    </Text>
+  )
+}
+
 export default function SocialScreen() {
-  const { profile, isLoading: profileLoading } = useProfile()
+  const { profile, isLoading: profileLoading, error: profileError, refreshProfile } = useProfile()
   const [groups, setGroups] = useState<GroupCardData[]>([])
   const [globalRank, setGlobalRank] = useState<{ rank: number; total: number } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -34,7 +68,10 @@ export default function SocialScreen() {
   const [showJoinModal, setShowJoinModal] = useState(false)
 
   const fetchData = useCallback(async () => {
-    if (!profile) return
+    if (!profile) {
+      setLoading(false)
+      return
+    }
     try {
       const [groupsData, rankData] = await Promise.all([
         getUserGroups(profile.id),
@@ -51,8 +88,8 @@ export default function SocialScreen() {
   }, [profile])
 
   useEffect(() => {
-    if (profile) fetchData()
-  }, [profile, fetchData])
+    fetchData()
+  }, [fetchData])
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -63,6 +100,23 @@ export default function SocialScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
+      </SafeAreaView>
+    )
+  }
+
+  // Profile sync error — show message with diagnostic
+  if (profileError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="warning-outline" size={48} color={Colors.accent} />
+          <Text style={styles.emptyTitle}>Connection Issue</Text>
+          <Text style={styles.emptySubtitle}>{profileError}</Text>
+          <TokenDebug />
+          <Pressable style={styles.primaryButton} onPress={refreshProfile}>
+            <Text style={styles.primaryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     )
   }
